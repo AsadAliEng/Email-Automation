@@ -1,0 +1,31 @@
+{
+  "name": "Task 2 - Reliable Two-Step Email Sequence",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {"parameters": {}, "id": "start", "name": "Manual Start", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0]},
+    {"parameters": {"operation": "read", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Config", "options": {}}, "id": "config", "name": "Read Config", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [220, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const config = Object.fromEntries($input.all().map(item => [item.json.Key, item.json.Value]));\nif (String(config.control_mode || 'Run').trim().toLowerCase() === 'pause') return [];\nreturn [{ json: config }];"}, "id": "gate", "name": "Run Gate", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 0]},
+    {"parameters": {"operation": "read", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Contacts", "options": {}}, "id": "contacts", "name": "Read Contacts", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [660, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const truthy = value => value === true || ['true', '1', 'yes'].includes(String(value ?? '').trim().toLowerCase());\nreturn $input.all().filter(item => String(item.json.Contact_Email || '').includes('@') && String(item.json.Status || '').trim().toLowerCase() === 'new' && !truthy(item.json.Reply_Detected) && !truthy(item.json.Unsubscribe_Detected));"}, "id": "eligible", "name": "Keep Eligible Contacts", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [880, 0]},
+    {"parameters": {"operation": "send", "sendTo": "={{$json.Contact_Email}}", "subject": "={{$('Run Gate').first().json.subject_1}}", "emailType": "text", "message": "={{$('Run Gate').first().json.template_1}}", "options": {}}, "id": "email1", "name": "Send Email 1", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [1100, 0], "credentials": {"gmailOAuth2": {"name": "Gmail account"}}, "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000},
+    {"parameters": {"operation": "append", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Logs", "columns": {"mappingMode": "defineBelow", "value": {"Timestamp": "={{$now}}", "Event": "email_sent", "Contact_Email": "={{$('Keep Eligible Contacts').item.json.Contact_Email}}", "Source_URL": "={{$('Keep Eligible Contacts').item.json.Source_URL || ''}}", "Sequence": 1, "Message_ID": "={{$json.id || $json.messageId || ''}}", "Status": "Sent_1", "Attempts": 1}}, "options": {}}, "id": "log1", "name": "Log Email 1", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [1320, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"amount": "={{Math.max(1, Math.round(Number($('Run Gate').first().json.delay_hours_1 || 0.0167) * 60))}}", "unit": "minutes"}, "id": "wait", "name": "Wait Before Email 2", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [1540, 0]},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const truthy = value => value === true || ['true', '1', 'yes'].includes(String(value ?? '').trim().toLowerCase());\n// The sheet is the reply/unsubscribe control source. A flagged contact never receives a follow-up.\nreturn $('Keep Eligible Contacts').all().filter(item => !truthy(item.json.Reply_Detected) && !truthy(item.json.Unsubscribe_Detected)).map(item => ({ json: item.json }));"}, "id": "safety", "name": "Reply & Unsubscribe Safety Check", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1760, 0]},
+    {"parameters": {"operation": "send", "sendTo": "={{$json.Contact_Email}}", "subject": "={{$('Run Gate').first().json.subject_2}}", "emailType": "text", "message": "={{$('Run Gate').first().json.template_2}}", "options": {}}, "id": "email2", "name": "Send Email 2", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [1980, 0], "credentials": {"gmailOAuth2": {"name": "Gmail account"}}, "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000},
+    {"parameters": {"operation": "append", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Logs", "columns": {"mappingMode": "defineBelow", "value": {"Timestamp": "={{$now}}", "Event": "email_sent", "Contact_Email": "={{$('Reply & Unsubscribe Safety Check').item.json.Contact_Email}}", "Source_URL": "={{$('Reply & Unsubscribe Safety Check').item.json.Source_URL || ''}}", "Sequence": 2, "Message_ID": "={{$json.id || $json.messageId || ''}}", "Status": "Sent_2", "Attempts": 1}}, "options": {}}, "id": "log2", "name": "Log Email 2", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [2200, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}}
+  ],
+  "connections": {
+    "Manual Start": {"main": [[{"node": "Read Config", "type": "main", "index": 0}]]},
+    "Read Config": {"main": [[{"node": "Run Gate", "type": "main", "index": 0}]]},
+    "Run Gate": {"main": [[{"node": "Read Contacts", "type": "main", "index": 0}]]},
+    "Read Contacts": {"main": [[{"node": "Keep Eligible Contacts", "type": "main", "index": 0}]]},
+    "Keep Eligible Contacts": {"main": [[{"node": "Send Email 1", "type": "main", "index": 0}]]},
+    "Send Email 1": {"main": [[{"node": "Log Email 1", "type": "main", "index": 0}]]},
+    "Log Email 1": {"main": [[{"node": "Wait Before Email 2", "type": "main", "index": 0}]]},
+    "Wait Before Email 2": {"main": [[{"node": "Reply & Unsubscribe Safety Check", "type": "main", "index": 0}]]},
+    "Reply & Unsubscribe Safety Check": {"main": [[{"node": "Send Email 2", "type": "main", "index": 0}]]},
+    "Send Email 2": {"main": [[{"node": "Log Email 2", "type": "main", "index": 0}]]}
+  },
+  "pinData": {}
+}
