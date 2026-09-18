@@ -1,0 +1,859 @@
+{
+    "name":  "Task 2 - Complete Three-Step Email Sequence",
+    "active":  false,
+    "settings":  {
+                     "executionOrder":  "v1"
+                 },
+    "nodes":  [
+                  {
+                      "parameters":  {
+
+                                     },
+                      "id":  "manual",
+                      "name":  "Manual Start",
+                      "type":  "n8n-nodes-base.manualTrigger",
+                      "typeVersion":  1,
+                      "position":  [
+                                       0,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "read",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Config",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "config",
+                      "name":  "Read Config",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       200,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const c = Object.fromEntries($input.all().map(x =\u003e [x.json.Key, x.json.Value])); if (c.control_mode === \u0027Pause\u0027) return []; return [{json:c}];"
+                                     },
+                      "id":  "gate",
+                      "name":  "Run Pause Restart Gate",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       400,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "read",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Sources",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "sources",
+                      "name":  "Read Sources",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       600,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "batchSize":  1
+                                     },
+                      "id":  "source-loop",
+                      "name":  "Fetch Each Source",
+                      "type":  "n8n-nodes-base.splitInBatches",
+                      "typeVersion":  3,
+                      "position":  [
+                                       800,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "url":  "={{$json.Source_URL}}",
+                                         "options":  {
+                                                         "timeout":  15000
+                                                     }
+                                     },
+                      "id":  "http",
+                      "name":  "HTTP Request",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4,
+                      "position":  [
+                                       1000,
+                                       0
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  2000
+                  },
+                  {
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const re = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi; const seen = new Set(); const out = []; for (const i of $input.all()) for (const raw of String(i.json.body ?? i.json.data ?? i.json).match(re) || []) { const email = raw.toLowerCase(); if (!seen.has(email)) { seen.add(email); out.push({json:{Contact_Email:email,Source_URL:i.json.Source_URL || \u0027\u0027,Status:\u0027New\u0027,Sequence:0,Attempts:0}}); } } return out;"
+                                     },
+                      "id":  "extract",
+                      "name":  "Extract Validate Deduplicate",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1200,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "append",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Contacts",
+                                         "columns":  {
+                                                         "mappingMode":  "autoMapInputData"
+                                                     }
+                                     },
+                      "id":  "contacts",
+                      "name":  "Append Contacts",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       1400,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "read",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Contacts",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "eligible",
+                      "name":  "Read Eligible Contacts",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       1600,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "return $input.all().filter(i =\u003e [\u0027New\u0027,\u0027Sent_1\u0027,\u0027Sent_2\u0027].includes(i.json.Status) \u0026\u0026 i.json.Reply_Detected !== \u0027true\u0027 \u0026\u0026 i.json.Unsubscribe_Detected !== \u0027true\u0027);"
+                                     },
+                      "id":  "filter",
+                      "name":  "Filter Active Contacts",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1800,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "batchSize":  1
+                                     },
+                      "id":  "contact-loop",
+                      "name":  "One Contact Per Run",
+                      "type":  "n8n-nodes-base.splitInBatches",
+                      "typeVersion":  3,
+                      "position":  [
+                                       2000,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "send",
+                                         "toList":  "={{$json.Contact_Email}}",
+                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_1}}",
+                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_1}}"
+                                     },
+                      "id":  "email1",
+                      "name":  "Send Email 1",
+                      "type":  "n8n-nodes-base.gmail",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       2200,
+                                       0
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  4000,
+                      "credentials":  {
+                                          "gmailOAuth2":  {
+                                                              "name":  "Gmail test account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "append",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Logs",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "value":  {
+                                                                       "Timestamp":  "={{$now}}",
+                                                                       "Event":  "email_sent",
+                                                                       "Sequence":  1,
+                                                                       "Status":  "Sent_1",
+                                                                       "Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}"
+                                                                   }
+                                                     }
+                                     },
+                      "id":  "log1",
+                      "name":  "Log Email 1",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       2400,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "amount":  "={{Number($(\u0027Read Config\u0027).first().json.delay_hours_1 || 24)}}",
+                                         "unit":  "hours"
+                                     },
+                      "id":  "wait1",
+                      "name":  "Wait Before Email 2",
+                      "type":  "n8n-nodes-base.wait",
+                      "typeVersion":  1.1,
+                      "position":  [
+                                       2600,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Read Config\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
+                                     },
+                      "id":  "stop1",
+                      "name":  "Stop If Reply Or Unsubscribe",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       2800,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "send",
+                                         "toList":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
+                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_2}}",
+                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_2}}"
+                                     },
+                      "id":  "email2",
+                      "name":  "Send Email 2",
+                      "type":  "n8n-nodes-base.gmail",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       3000,
+                                       0
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  4000,
+                      "credentials":  {
+                                          "gmailOAuth2":  {
+                                                              "name":  "Gmail test account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "append",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Logs",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "value":  {
+                                                                       "Timestamp":  "={{$now}}",
+                                                                       "Event":  "email_sent",
+                                                                       "Sequence":  2,
+                                                                       "Status":  "Sent_2",
+                                                                       "Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}"
+                                                                   }
+                                                     }
+                                     },
+                      "id":  "log2",
+                      "name":  "Log Email 2",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       3200,
+                                       0
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "amount":  "={{Number($(\u0027Read Config\u0027).first().json.delay_hours_2 || 48)}}",
+                                         "unit":  "hours"
+                                     },
+                      "id":  "wait2",
+                      "name":  "Wait Before Email 3",
+                      "type":  "n8n-nodes-base.wait",
+                      "typeVersion":  1.1,
+                      "position":  [
+                                       3400,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "mode":  "runOnceForAllItems",
+                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Read Config\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
+                                     },
+                      "id":  "stop2",
+                      "name":  "Stop Before Final Email",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       3600,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "send",
+                                         "toList":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
+                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_3}}",
+                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_3}}"
+                                     },
+                      "id":  "email3",
+                      "name":  "Send Email 3",
+                      "type":  "n8n-nodes-base.gmail",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       3800,
+                                       0
+                                   ],
+                      "retryOnFail":  true,
+                      "maxTries":  3,
+                      "waitBetweenTries":  4000,
+                      "credentials":  {
+                                          "gmailOAuth2":  {
+                                                              "name":  "Gmail test account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "append",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Logs",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "value":  {
+                                                                       "Timestamp":  "={{$now}}",
+                                                                       "Event":  "email_sent",
+                                                                       "Sequence":  3,
+                                                                       "Status":  "Sent_3",
+                                                                       "Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}"
+                                                                   }
+                                                     }
+                                     },
+                      "id":  "log3",
+                      "name":  "Log Email 3",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       4000,
+                                       0
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "search",
+                                         "query":  "={{\u0027from:\u0027 + One Contact Per Run.item.json.Contact_Email}}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "reply1",
+                      "name":  "Search Replies 1",
+                      "type":  "n8n-nodes-base.gmail",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       2800,
+                                       100
+                                   ],
+                      "alwaysOutputData":  true,
+                      "credentials":  {
+                                          "gmailOAuth2":  {
+                                                              "name":  "Gmail test account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "search",
+                                         "query":  "={{\u0027from:\u0027 + One Contact Per Run.item.json.Contact_Email}}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "reply2",
+                      "name":  "Search Replies 2",
+                      "type":  "n8n-nodes-base.gmail",
+                      "typeVersion":  2.1,
+                      "position":  [
+                                       3600,
+                                       100
+                                   ],
+                      "alwaysOutputData":  true,
+                      "credentials":  {
+                                          "gmailOAuth2":  {
+                                                              "name":  "Gmail test account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Contacts",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "matchingColumns":  [
+                                                                                 "Contact_Email"
+                                                                             ],
+                                                         "value":  {
+                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Status":  "Sent_1",
+                                                                       "Sequence":  1,
+                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Sent_At":  "={{$now}}",
+                                                                       "Attempts":  1,
+                                                                       "Updated_At":  "={{$now}}"
+                                                                   }
+                                                     },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update1",
+                      "name":  "Update Contact After Email 1",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       2500,
+                                       200
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Contacts",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "matchingColumns":  [
+                                                                                 "Contact_Email"
+                                                                             ],
+                                                         "value":  {
+                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Status":  "Sent_2",
+                                                                       "Sequence":  2,
+                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Sent_At":  "={{$now}}",
+                                                                       "Attempts":  1,
+                                                                       "Updated_At":  "={{$now}}"
+                                                                   }
+                                                     },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update2",
+                      "name":  "Update Contact After Email 2",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       3300,
+                                       200
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "update",
+                                         "documentId":  "GOOGLE_SHEET_ID",
+                                         "sheetName":  "Contacts",
+                                         "columns":  {
+                                                         "mappingMode":  "defineBelow",
+                                                         "matchingColumns":  [
+                                                                                 "Contact_Email"
+                                                                             ],
+                                                         "value":  {
+                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Status":  "Sent_3",
+                                                                       "Sequence":  3,
+                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Sent_At":  "={{$now}}",
+                                                                       "Attempts":  1,
+                                                                       "Updated_At":  "={{$now}}"
+                                                                   }
+                                                     },
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "update3",
+                      "name":  "Update Contact After Email 3",
+                      "type":  "n8n-nodes-base.googleSheets",
+                      "typeVersion":  4,
+                      "position":  [
+                                       4100,
+                                       200
+                                   ],
+                      "credentials":  {
+                                          "googleSheetsOAuth2Api":  {
+                                                                        "name":  "Google Sheets account"
+                                                                    }
+                                      }
+                  }
+              ],
+    "connections":  {
+                        "Manual Start":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Read Config",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Read Config":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Run Pause Restart Gate",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Run Pause Restart Gate":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Read Sources",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Read Sources":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Fetch Each Source",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Fetch Each Source":  {
+                                                  "main":  [
+                                                               [
+                                                                   {
+                                                                       "node":  "HTTP Request",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ],
+                                                               [
+                                                                   {
+                                                                       "node":  "Read Eligible Contacts",
+                                                                       "type":  "main",
+                                                                       "index":  0
+                                                                   }
+                                                               ]
+                                                           ]
+                                              },
+                        "HTTP Request":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Extract Validate Deduplicate",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Extract Validate Deduplicate":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Append Contacts",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "Append Contacts":  {
+                                                "main":  [
+                                                             [
+                                                                 {
+                                                                     "node":  "Fetch Each Source",
+                                                                     "type":  "main",
+                                                                     "index":  0
+                                                                 }
+                                                             ]
+                                                         ]
+                                            },
+                        "Read Eligible Contacts":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "Filter Active Contacts",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "Filter Active Contacts":  {
+                                                       "main":  [
+                                                                    [
+                                                                        {
+                                                                            "node":  "One Contact Per Run",
+                                                                            "type":  "main",
+                                                                            "index":  0
+                                                                        }
+                                                                    ]
+                                                                ]
+                                                   },
+                        "One Contact Per Run":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Send Email 1",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ],
+                                                                 [
+
+                                                                 ]
+                                                             ]
+                                                },
+                        "Send Email 1":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Log Email 1",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Log Email 1":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Update Contact After Email 1",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Wait Before Email 2":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Search Replies 1",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Stop If Reply Or Unsubscribe":  {
+                                                             "main":  [
+                                                                          [
+                                                                              {
+                                                                                  "node":  "Send Email 2",
+                                                                                  "type":  "main",
+                                                                                  "index":  0
+                                                                              }
+                                                                          ]
+                                                                      ]
+                                                         },
+                        "Send Email 2":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Log Email 2",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Log Email 2":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Update Contact After Email 2",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Wait Before Email 3":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Search Replies 2",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Stop Before Final Email":  {
+                                                        "main":  [
+                                                                     [
+                                                                         {
+                                                                             "node":  "Send Email 3",
+                                                                             "type":  "main",
+                                                                             "index":  0
+                                                                         }
+                                                                     ]
+                                                                 ]
+                                                    },
+                        "Send Email 3":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Log Email 3",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Search Replies 1":  {
+                                                 "main":  [
+                                                              {
+                                                                  "node":  "Stop If Reply Or Unsubscribe",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                             },
+                        "Search Replies 2":  {
+                                                 "main":  [
+                                                              {
+                                                                  "node":  "Stop Before Final Email",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                             },
+                        "Update Contact After Email 1":  {
+                                                             "main":  [
+                                                                          {
+                                                                              "node":  "Wait Before Email 2",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                         },
+                        "Update Contact After Email 2":  {
+                                                             "main":  [
+                                                                          {
+                                                                              "node":  "Wait Before Email 3",
+                                                                              "type":  "main",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                         },
+                        "Update Contact After Email 3":  {
+                                                             "main":  [
+
+                                                                      ]
+                                                         },
+                        "Log Email 3":  {
+                                            "main":  [
+                                                         {
+                                                             "node":  "Update Contact After Email 3",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                        }
+                    }
+}

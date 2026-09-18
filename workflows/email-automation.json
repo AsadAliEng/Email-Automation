@@ -1,0 +1,43 @@
+{
+  "name": "Task 2 - Restartable Email Automation",
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {"parameters": {}, "id": "manual", "name": "Manual Start", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0]},
+    {"parameters": {"operation": "read", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Config", "options": {}}, "id": "read-config", "name": "Read Config", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [220, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const config = Object.fromEntries($input.all().map(item => [item.json.Key, item.json.Value]));\nif (config.control_mode === 'Pause') return [];\nreturn [{ json: { ...config, max_attempts: Number(config.max_attempts || 3) } }];"}, "id": "control-gate", "name": "Config Control Gate", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 0]},
+    {"parameters": {"operation": "read", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Sources", "options": {}}, "id": "read-sources", "name": "Read Sources", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [660, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"batchSize": 1, "options": {}}, "id": "split-sources", "name": "Split Sources", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [880, 0]},
+    {"parameters": {"url": "={{$json.Source_URL}}", "options": {"timeout": 15000, "response": {"response": {"responseFormat": "text"}}}}, "id": "fetch-page", "name": "HTTP Fetch Page", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [1100, 0], "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 2000},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi;\nconst out = new Map();\nfor (const item of $input.all()) {\n  const html = String(item.json.body ?? item.json.data ?? item.json);\n  for (const email of html.match(emailRe) || []) {\n    const normalized = email.toLowerCase();\n    if (!out.has(normalized)) out.set(normalized, { Contact_Email: normalized, Source_URL: item.json.Source_URL || '', Status: 'New' });\n  }\n}\nreturn [...out.values()].map(json => ({ json }));"}, "id": "extract-emails", "name": "Extract Validate Deduplicate", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1320, 0]},
+    {"parameters": {"operation": "append", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Contacts", "columns": {"mappingMode": "autoMapInputData"}, "options": {}}, "id": "append-contacts", "name": "Append New Contacts", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [1540, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"operation": "read", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Contacts", "options": {}}, "id": "read-contacts", "name": "Read New Contacts", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [1760, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "return $input.all().filter(item => ['New','Sent_1','Sent_2'].includes(item.json.Status) && item.json.Reply_Detected !== 'true' && item.json.Unsubscribe_Detected !== 'true');"}, "id": "eligible", "name": "Keep Eligible Contacts", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1980, 0]},
+    {"parameters": {"batchSize": 1, "options": {}}, "id": "split-contacts", "name": "One Contact At A Time", "type": "n8n-nodes-base.splitInBatches", "typeVersion": 3, "position": [2200, 0]},
+    {"parameters": {"operation": "send", "toList": "={{$json.Contact_Email}}", "subject": "={{$('Read Config').item.json.subject_1}}", "message": "={{$('Read Config').item.json.template_1}}", "options": {}}, "id": "send-one", "name": "Send Email Sequence", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [2420, 0], "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 4000, "credentials": {"gmailOAuth2": {"name": "Gmail test account"}}},
+    {"parameters": {"operation": "append", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Logs", "columns": {"mappingMode": "defineBelow", "value": {"Timestamp": "={{$now}}", "Event": "email_sent", "Contact_Email": "={{$json.Contact_Email}}", "Sequence": "={{$json.Sequence || 1}}", "Message_ID": "={{$json.id || $json.messageId || ''}}", "Status": "sent", "Attempts": 1}}, "options": {}}, "id": "log-send", "name": "Log Send", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [2640, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}},
+    {"parameters": {"amount": "={{Number($('Read Config').item.json.delay_hours_1 || 24)}}", "unit": "hours"}, "id": "wait", "name": "Configured Wait", "type": "n8n-nodes-base.wait", "typeVersion": 1.1, "position": [2860, 0]},
+    {"parameters": {"operation": "search", "query": "={{'from:' + $json.Contact_Email}}", "options": {}}, "id": "check-replies", "name": "Check Reply Or Unsubscribe", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [3080, 0], "credentials": {"gmailOAuth2": {"name": "Gmail test account"}}},
+    {"parameters": {"mode": "runOnceForAllItems", "jsCode": "const stopWords = String($('Read Config').item.json.stop_words || 'unsubscribe,stop,remove').toLowerCase().split(',').map(x => x.trim());\nconst text = JSON.stringify($input.all()).toLowerCase();\nif (stopWords.some(word => text.includes(word))) return [];\nreturn $input.all();"}, "id": "stop-gate", "name": "Stop On Reply Or Unsubscribe", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [3300, 0]},
+    {"parameters": {"operation": "append", "documentId": "GOOGLE_SHEET_ID", "sheetName": "Logs", "columns": {"mappingMode": "defineBelow", "value": {"Timestamp": "={{$now}}", "Event": "workflow_complete", "Status": "complete"}}, "options": {}}, "id": "log-complete", "name": "Log Complete", "type": "n8n-nodes-base.googleSheets", "typeVersion": 4, "position": [3520, 0], "credentials": {"googleSheetsOAuth2Api": {"name": "Google Sheets account"}}}
+  ],
+  "connections": {
+    "Manual Start": {"main": [[{"node": "Read Config", "type": "main", "index": 0}]]},
+    "Read Config": {"main": [[{"node": "Config Control Gate", "type": "main", "index": 0}]]},
+    "Config Control Gate": {"main": [[{"node": "Read Sources", "type": "main", "index": 0}]]},
+    "Read Sources": {"main": [[{"node": "Split Sources", "type": "main", "index": 0}]]},
+    "Split Sources": {"main": [[{"node": "HTTP Fetch Page", "type": "main", "index": 0}], [{"node": "Read New Contacts", "type": "main", "index": 0}]]},
+    "HTTP Fetch Page": {"main": [[{"node": "Extract Validate Deduplicate", "type": "main", "index": 0}]]},
+    "Extract Validate Deduplicate": {"main": [[{"node": "Append New Contacts", "type": "main", "index": 0}]]},
+    "Append New Contacts": {"main": [[{"node": "Split Sources", "type": "main", "index": 0}]]},
+    "Read New Contacts": {"main": [[{"node": "Keep Eligible Contacts", "type": "main", "index": 0}]]},
+    "Keep Eligible Contacts": {"main": [[{"node": "One Contact At A Time", "type": "main", "index": 0}]]},
+    "One Contact At A Time": {"main": [[{"node": "Send Email Sequence", "type": "main", "index": 0}], [{"node": "Log Complete", "type": "main", "index": 0}]]},
+    "Send Email Sequence": {"main": [[{"node": "Log Send", "type": "main", "index": 0}]]},
+    "Log Send": {"main": [[{"node": "Configured Wait", "type": "main", "index": 0}]]},
+    "Configured Wait": {"main": [[{"node": "Check Reply Or Unsubscribe", "type": "main", "index": 0}]]},
+    "Check Reply Or Unsubscribe": {"main": [[{"node": "Stop On Reply Or Unsubscribe", "type": "main", "index": 0}]]},
+    "Stop On Reply Or Unsubscribe": {"main": [[{"node": "One Contact At A Time", "type": "main", "index": 0}]]}
+  },
+  "pinData": {}
+}
