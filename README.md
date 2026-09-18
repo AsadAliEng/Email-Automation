@@ -46,3 +46,7 @@ The JSON is intentionally a credential-free template. Credentials, sheet IDs, an
 ## Recommended import
 
 Use workflows/email-automation-complete.json for the final sequence. It includes Email 1, Email 2, Email 3, configured waits, Gmail reply searches, stop gates, and three-attempt retry settings. The earlier email-automation.json is the compact reference workflow.
+
+## Short setup option
+
+For a faster demonstration, import workflows/email-automation-short.json. It keeps the required core path: source fetch/extraction, Contacts logging, Email 1, configured wait, reply/unsubscribe stop gate, Email 2, and Logs. It omits the optional third email and extra contact-update nodes.
