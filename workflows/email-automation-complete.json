@@ -201,8 +201,8 @@
                       "parameters":  {
                                          "operation":  "send", "emailType":  "text",
                                          "sendTo":  "={{$json.Contact_Email}}",
-                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_1}}",
-                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_1}}"
+                                         "subject":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.subject_1}}",
+                                         "message":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.template_1}}"
                                      },
                       "id":  "email1",
                       "name":  "Send Email 1",
@@ -254,7 +254,7 @@
                   },
                   {
                       "parameters":  {
-                                         "amount":  "={{Number($(\u0027Read Config\u0027).first().json.delay_hours_1 || 24)}}",
+                                         "amount":  "={{Number($(\u0027Run Pause Restart Gate\u0027).first().json.delay_hours_1 || 24)}}",
                                          "unit":  "hours"
                                      },
                       "id":  "wait1",
@@ -269,7 +269,7 @@
                   {
                       "parameters":  {
                                          "mode":  "runOnceForAllItems",
-                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Read Config\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
+                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Run Pause Restart Gate\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
                                      },
                       "id":  "stop1",
                       "name":  "Stop If Reply Or Unsubscribe",
@@ -284,8 +284,8 @@
                       "parameters":  {
                                          "operation":  "send", "emailType":  "text",
                                          "sendTo":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
-                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_2}}",
-                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_2}}"
+                                         "subject":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.subject_2}}",
+                                         "message":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.template_2}}"
                                      },
                       "id":  "email2",
                       "name":  "Send Email 2",
@@ -337,7 +337,7 @@
                   },
                   {
                       "parameters":  {
-                                         "amount":  "={{Number($(\u0027Read Config\u0027).first().json.delay_hours_2 || 48)}}",
+                                         "amount":  "={{Number($(\u0027Run Pause Restart Gate\u0027).first().json.delay_hours_2 || 48)}}",
                                          "unit":  "hours"
                                      },
                       "id":  "wait2",
@@ -352,7 +352,7 @@
                   {
                       "parameters":  {
                                          "mode":  "runOnceForAllItems",
-                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Read Config\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
+                                         "jsCode":  "const text = JSON.stringify($input.all()).toLowerCase(); const words = String($(\u0027Run Pause Restart Gate\u0027).first().json.stop_words || \u0027unsubscribe,stop,remove\u0027).toLowerCase().split(\u0027,\u0027); if (words.some(w =\u003e text.includes(w.trim())) || text.includes(\u0027reply\u0027)) return []; return $input.all();"
                                      },
                       "id":  "stop2",
                       "name":  "Stop Before Final Email",
@@ -367,8 +367,8 @@
                       "parameters":  {
                                          "operation":  "send", "emailType":  "text",
                                          "sendTo":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
-                                         "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_3}}",
-                                         "message":  "={{$(\u0027Read Config\u0027).first().json.template_3}}"
+                                         "subject":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.subject_3}}",
+                                         "message":  "={{$(\u0027Run Pause Restart Gate\u0027).first().json.template_3}}"
                                      },
                       "id":  "email3",
                       "name":  "Send Email 3",
