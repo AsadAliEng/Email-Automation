@@ -199,8 +199,8 @@
                   },
                   {
                       "parameters":  {
-                                         "operation":  "send",
-                                         "toList":  "={{$json.Contact_Email}}",
+                                         "operation":  "send", "emailType":  "text",
+                                         "sendTo":  "={{$json.Contact_Email}}",
                                          "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_1}}",
                                          "message":  "={{$(\u0027Read Config\u0027).first().json.template_1}}"
                                      },
@@ -282,8 +282,8 @@
                   },
                   {
                       "parameters":  {
-                                         "operation":  "send",
-                                         "toList":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
+                                         "operation":  "send", "emailType":  "text",
+                                         "sendTo":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                          "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_2}}",
                                          "message":  "={{$(\u0027Read Config\u0027).first().json.template_2}}"
                                      },
@@ -365,8 +365,8 @@
                   },
                   {
                       "parameters":  {
-                                         "operation":  "send",
-                                         "toList":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
+                                         "operation":  "send", "emailType":  "text",
+                                         "sendTo":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                          "subject":  "={{$(\u0027Read Config\u0027).first().json.subject_3}}",
                                          "message":  "={{$(\u0027Read Config\u0027).first().json.template_3}}"
                                      },
@@ -416,7 +416,7 @@
                   {
                       "parameters":  {
                                          "operation":  "search",
-                                         "query":  "={{\u0027from:\u0027 + One Contact Per Run.item.json.Contact_Email}}",
+                                         "query":  "={{\u0027from:\u0027 + $(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                          "options":  {
 
                                                      }
@@ -439,7 +439,7 @@
                   {
                       "parameters":  {
                                          "operation":  "search",
-                                         "query":  "={{\u0027from:\u0027 + One Contact Per Run.item.json.Contact_Email}}",
+                                         "query":  "={{\u0027from:\u0027 + $(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                          "options":  {
 
                                                      }
@@ -470,10 +470,10 @@
                                                                                  "Contact_Email"
                                                                              ],
                                                          "value":  {
-                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                                                        "Status":  "Sent_1",
                                                                        "Sequence":  1,
-                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
                                                                        "Last_Sent_At":  "={{$now}}",
                                                                        "Attempts":  1,
                                                                        "Updated_At":  "={{$now}}"
@@ -508,10 +508,10 @@
                                                                                  "Contact_Email"
                                                                              ],
                                                          "value":  {
-                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                                                        "Status":  "Sent_2",
                                                                        "Sequence":  2,
-                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
                                                                        "Last_Sent_At":  "={{$now}}",
                                                                        "Attempts":  1,
                                                                        "Updated_At":  "={{$now}}"
@@ -546,10 +546,10 @@
                                                                                  "Contact_Email"
                                                                              ],
                                                          "value":  {
-                                                                       "Contact_Email":  "={{One Contact Per Run.item.json.Contact_Email}}",
+                                                                       "Contact_Email":  "={{$(\u0027One Contact Per Run\u0027).item.json.Contact_Email}}",
                                                                        "Status":  "Sent_3",
                                                                        "Sequence":  3,
-                                                                       "Last_Message_ID":  "={{.id || .messageId || \u0027\u0027}}",
+                                                                       "Last_Message_ID":  "={{$json.id || $json.messageId || \u0027\u0027}}",
                                                                        "Last_Sent_At":  "={{$now}}",
                                                                        "Attempts":  1,
                                                                        "Updated_At":  "={{$now}}"
