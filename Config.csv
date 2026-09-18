@@ -1,0 +1,16 @@
+Key,Value
+control_mode,Run
+sender_name,SmileCare Outreach
+sender_email,test-account@example.com
+subject_1,Quick question about your clinic
+subject_2,Following up on my note
+subject_3,Last follow-up
+template_1,"Hi {{Contact_Email}},\n\nI am reaching out with a short introduction. If this is not relevant, reply STOP and we will not contact you again."
+template_2,"Hi {{Contact_Email}},\n\nFollowing up on my earlier note. Reply STOP to unsubscribe."
+template_3,"Hi {{Contact_Email}},\n\nThis is my final follow-up. Reply STOP if you do not want further messages."
+delay_hours_1,24
+delay_hours_2,48
+quiet_start,21:00
+quiet_end,08:00
+stop_words,"unsubscribe,stop,remove,no thanks"
+max_attempts,3

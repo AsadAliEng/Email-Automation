@@ -1,0 +1,9 @@
+# n8n/Python temporary files
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.log

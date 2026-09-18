@@ -1,0 +1,6 @@
+Source_URL,Enabled,Last_Fetched,Fetch_Status,Error
+https://example.com,true,,Pending,
+https://www.iana.org/domains/example,true,,Pending,
+https://www.python.org/psf-landing/,true,,Pending,
+https://www.w3.org/,true,,Pending,
+https://www.djangoproject.com/,true,,Pending,
